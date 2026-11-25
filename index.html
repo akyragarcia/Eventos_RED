@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="es"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>RED · Control de acceso</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#470e14;color:#fff;min-height:100vh;display:flex;flex-direction:column}
+header{padding:14px 16px;display:flex;justify-content:space-between;align-items:center;background:#2f090d}
+header b{letter-spacing:.08em}
+#cuenta{font-size:14px;opacity:.9}
+#lector{width:100%;max-width:460px;margin:12px auto 0;background:#000;border-radius:12px;overflow:hidden}
+#estado{margin:14px 12px;padding:22px 16px;border-radius:14px;text-align:center;background:#5a1a21;min-height:150px;display:flex;flex-direction:column;justify-content:center}
+#estado .t{font-size:26px;font-weight:700}
+#estado .n{font-size:22px;margin-top:8px}
+#estado .s{font-size:15px;margin-top:6px;opacity:.9}
+.ok{background:#1b7f3b!important}.usado{background:#c77d00!important}.no{background:#b3261e!important}
+form{display:flex;gap:8px;margin:0 12px 16px}
+input{flex:1;padding:14px;border-radius:10px;border:0;font-size:17px;text-transform:uppercase}
+button{padding:14px 18px;border:0;border-radius:10px;background:#e4d2ac;color:#470e14;font-weight:700;font-size:16px}
+</style></head><body>
+<header><b>RED · CONTROL DE ACCESO</b><span id="cuenta"></span></header>
+<div id="lector"></div>
+<div id="estado"><div class="t">Apunta al QR de la invitación</div></div>
+<form id="f"><input id="manual" placeholder="Código manual (RED-XXXXXX)" autocomplete="off"><button>Validar</button></form>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script>
+// === CONFIGURACIÓN: pega aquí la URL de tu implementación (termina en /exec) ===
+const API_URL = 'https://script.google.com/macros/s/AKfycbxlc2FL8L7USav0327YuVo_Lcnt7H2dNDj004Y2MZgGiGpjzCgGlOdw42DjyEWxRaI1/exec';
+const CLAVE = 'e9dccbf384e537e6';
+// ============================================================================
+const est = document.getElementById('estado'), cuenta = document.getElementById('cuenta');
+let ocupado = false, ultimo = '', ultimoT = 0;
+function pinta(cls, t, n, s){
+  est.className = cls;
+  est.innerHTML = '<div class="t">'+t+'</div>'+(n?'<div class="n">'+n+'</div>':'')+(s?'<div class="s">'+s+'</div>':'');
+}
+function esc(x){return String(x==null?'':x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+async function validar(codigo){
+  codigo = String(codigo).trim().toUpperCase();
+  if(!codigo || ocupado) return;
+  if(codigo === ultimo && Date.now()-ultimoT < 4000) return;
+  ultimo = codigo; ultimoT = Date.now(); ocupado = true;
+  pinta('', 'Validando…');
+  try{
+    const r = await fetch(API_URL+'?k='+encodeURIComponent(CLAVE)+'&c='+encodeURIComponent(codigo));
+    const d = await r.json();
+    if(d.total!=null) cuenta.textContent = d.dentro+' / '+d.total+' adentro';
+    if(d.estado==='ok'){ pinta('ok','✅ PASE VÁLIDO', esc(d.nombre)); if(navigator.vibrate) navigator.vibrate(150); }
+    else if(d.estado==='usado'){ pinta('usado','⚠️ YA SE USÓ', esc(d.nombre), d.hora?'Entró a las '+esc(d.hora):''); if(navigator.vibrate) navigator.vibrate([200,100,200]); }
+    else if(d.estado==='no_existe'){ pinta('no','❌ CÓDIGO NO EXISTE', '', esc(codigo)); if(navigator.vibrate) navigator.vibrate([400]); }
+    else { pinta('no','Error', esc(d.mensaje||d.estado||'Sin respuesta')); }
+  }catch(err){ pinta('no','Sin conexión', 'Revisa el internet e inténtalo de nuevo'); ultimo=''; }
+  setTimeout(()=>{ocupado=false},1200);
+}
+document.getElementById('f').addEventListener('submit',e=>{e.preventDefault();const i=document.getElementById('manual');validar(i.value);i.value='';});
+const lector = new Html5Qrcode('lector');
+lector.start({facingMode:'environment'},{fps:10,qrbox:{width:260,height:260}},txt=>validar(txt),()=>{})
+ .catch(()=>pinta('no','No se pudo abrir la cámara','Da permiso a la cámara o usa el código manual'));
+</script></body></html>
