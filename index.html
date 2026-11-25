@@ -32,7 +32,7 @@ button{padding:14px 18px;border:0;border-radius:10px;background:#e4d2ac;color:#4
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
 <script>
 // === CONFIGURACIÓN: pega aquí la URL de tu implementación (termina en /exec) ===
-const API_URL = 'https://script.google.com/macros/s/AKfycbxlc2FL8L7USav0327YuVo_Lcnt7H2dNDj004Y2MZgGiGpjzCgGlOdw42DjyEWxRaI1/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbz_LJRGxOROEZX5Hhf-bLNU1WWE7WjC8kjzeVcaqnmizVs42HC0wHxBthlCI1d2Vqdb/exec';
 const CLAVE = 'e9dccbf384e537e6';
 // ============================================================================
 const est = document.getElementById('estado'), cuenta = document.getElementById('cuenta');
@@ -49,12 +49,18 @@ async function validar(codigo){
   ultimo = codigo; ultimoT = Date.now(); ocupado = true;
   pinta('', 'Validando…');
   try{
-    const r = await fetch(API_URL+'?k='+encodeURIComponent(CLAVE)+'&c='+encodeURIComponent(codigo));
-    const d = await r.json();
+    let r;
+    try{ r = await fetch(API_URL+'?k='+encodeURIComponent(CLAVE)+'&c='+encodeURIComponent(codigo)); }
+    catch(e){ pinta('no','Sin conexión', 'No se pudo contactar al servidor. Revisa el internet y que la implementación esté en "Cualquier persona".'); ultimo=''; setTimeout(()=>{ocupado=false},1200); return; }
+    const txt = await r.text();
+    let d;
+    try{ d = JSON.parse(txt); }
+    catch(e){ pinta('no','Respuesta inesperada', 'El script respondió algo que no es el escáner. Falta publicar la nueva versión (Implementar > Administrar implementaciones).'); ultimo=''; setTimeout(()=>{ocupado=false},1200); return; }
     if(d.total!=null) cuenta.textContent = d.dentro+' / '+d.total+' adentro';
     if(d.estado==='ok'){ pinta('ok','✅ PASE VÁLIDO', esc(d.nombre)); if(navigator.vibrate) navigator.vibrate(150); }
     else if(d.estado==='usado'){ pinta('usado','⚠️ YA SE USÓ', esc(d.nombre), d.hora?'Entró a las '+esc(d.hora):''); if(navigator.vibrate) navigator.vibrate([200,100,200]); }
     else if(d.estado==='no_existe'){ pinta('no','❌ CÓDIGO NO EXISTE', '', esc(codigo)); if(navigator.vibrate) navigator.vibrate([400]); }
+    else if(d.estado==='denegado'){ pinta('no','Clave incorrecta', 'La clave de la página no coincide con la del script'); }
     else { pinta('no','Error', esc(d.mensaje||d.estado||'Sin respuesta')); }
   }catch(err){ pinta('no','Sin conexión', 'Revisa el internet e inténtalo de nuevo'); ultimo=''; }
   setTimeout(()=>{ocupado=false},1200);
