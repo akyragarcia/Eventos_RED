@@ -50,7 +50,7 @@ async function validar(codigo){
   pinta('', 'Validando…');
   try{
     let r;
-    try{ r = await fetch(API_URL+'?k='+encodeURIComponent(CLAVE)+'&c='+encodeURIComponent(codigo)); }
+    try{ r = await fetch(API_URL+'?q='+encodeURIComponent(CLAVE+'.'+codigo)); }
     catch(e){ pinta('no','Sin conexión', 'No se pudo contactar al servidor. Revisa el internet y que la implementación esté en "Cualquier persona".'); ultimo=''; setTimeout(()=>{ocupado=false},1200); return; }
     const txt = await r.text();
     let d;
